@@ -2,86 +2,87 @@ import styles from './App.module.css';
 import { Button } from './/components/Button/Button';
 import { ImageGallery } from './/components/ImageGallery/ImageGallery';
 import { Loader } from './/components/Loader/Loader';
-import { Modal } from './/components/Modal/Modal';
+import Modal from './/components/Modal/Modal';
 import { Searchbar } from './/components/Searchbar/Searchbar';
 import { fetchImages } from './Api';
-import { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export class App extends Component {
-  state = {
-    images: [],
-    isLoading: false,
-    error: null,
-    query: '',
-    page: 1,
-    totalHits: 0,
-    isModal: false,
-    selectedImage: '',
-  };
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalHits, setTotalHits] = useState(0);
+  const [isModal, setIsModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { query, page } = this.state;
-    if (prevState.query !== query || prevState.page !== page) {
-      this.setState({ isLoading: true });
+  useEffect(() => {
+    const fetchData = async () => {
+      if (query === '' || page < 1) return;
+      setIsLoading(true);
       try {
         const images = await fetchImages(query, page);
         if (images.hits.length === 0) {
           alert('Nothing found!');
         }
-
-        this.setState({
-          images: [...prevState.images, ...images.hits],
-          totalHits: images.totalHits,
-        });
+        if (page > 1) {
+          setImages(prevImages => [...prevImages, ...images.hits]);
+        } else {
+          setImages(images.hits);
+        }
+        setTotalHits(images.totalHits);
       } catch (error) {
-        this.setState({ error });
-        alert('error: ' + this.state.error);
+        setError(error);
+        alert('error: ' + error);
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
-    }
-  }
+    };
 
-  formSubmit = searchQuery => {
-    this.setState({ query: searchQuery, page: 1, images: [] });
+    fetchData();
+  }, [query, page]);
+
+  const formSubmit = searchQuery => {
+    setQuery(searchQuery);
+    setPage(1);
+    setImages([]);
   };
-  loadMore = e => {
+  const loadMore = e => {
     e.preventDefault();
-
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+    setPage(prevPage => prevPage + 1);
   };
 
-  onOpenModal = imageURL => {
-    this.setState({ isModal: true, selectedImage: imageURL });
+  const onOpenModal = imageURL => {
+    setIsModal(true);
+    setSelectedImage(imageURL);
   };
 
-  onCloseModal = () => {
-    this.setState({ isModal: false, selectedImage: '' });
+  const onCloseModal = () => {
+    setIsModal(false);
+    setSelectedImage('');
   };
 
-  render() {
-    return (
-      <div className={styles.app}>
-        <Searchbar onSubmit={this.formSubmit} />
-        {this.state.isLoading && <Loader />}
-        <ImageGallery
-          images={this.state.images}
-          onOpenModal={this.onOpenModal}
+  return (
+    <div className={styles.app}>
+      <Searchbar onSubmit={formSubmit} />
+      {isLoading && <Loader />}
+      {error ? (
+        <h2 className={styles.error}>{error}</h2>
+      ) : (
+        <ImageGallery images={images} onOpenModal={onOpenModal} />
+      )}
+
+      {page < Math.ceil(totalHits / 12) ? <Button onClick={loadMore} /> : null}
+      {isModal && (
+        <Modal
+          largeImage={selectedImage}
+          onClick={onCloseModal}
+          onCloseModal={onCloseModal}
         />
+      )}
+    </div>
+  );
+};
 
-        {this.state.page < Math.ceil(this.state.totalHits / 12) ? (
-          <Button onClick={this.loadMore} />
-        ) : null}
-        {this.state.isModal && (
-          <Modal
-            largeImage={this.state.selectedImage}
-            onClick={this.onCloseModal}
-            onCloseModal={this.onCloseModal}
-          />
-        )}
-      </div>
-    );
-  }
-}
+export default App;
