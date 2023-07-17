@@ -18,19 +18,16 @@ const App = () => {
   const [selectedImage, setSelectedImage] = useState('');
 
   useEffect(() => {
+    if (query === '') return;
     const fetchData = async () => {
-      if (query === '' || page < 1) return;
       setIsLoading(true);
       try {
         const images = await fetchImages(query, page);
         if (images.hits.length === 0) {
           alert('Nothing found!');
+          return;
         }
-        if (page > 1) {
-          setImages(prevImages => [...prevImages, ...images.hits]);
-        } else {
-          setImages(images.hits);
-        }
+        setImages(prevImages => [...prevImages, ...images.hits]);
         setTotalHits(images.totalHits);
       } catch (error) {
         setError(error);
@@ -47,6 +44,7 @@ const App = () => {
     setQuery(searchQuery);
     setPage(1);
     setImages([]);
+    setTotalHits(0);
   };
   const loadMore = e => {
     e.preventDefault();
